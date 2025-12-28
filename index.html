@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026跨年倒计时</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: radial-gradient(#1a1a2e, #000000); height: 100vh; font-family: "Microsoft YaHei", sans-serif; }
+        /* 粒子背景：默认显示，加载失败也不隐藏（保留占位） */
+        #particles-js { position: absolute; width: 100%; height: 100%; z-index: 1; }
+        .container { position: relative; z-index: 2; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        .title { font-size: 5vw; font-weight: bold; background: linear-gradient(90deg, #ffd700, #ff6b6b, #4ecdc4, #ffd700); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: gradientMove 8s ease infinite, scale 3s ease-in-out infinite alternate; margin-bottom: 20px; }
+        
+        /* 取消动画延迟，强制立即显示 */
+        .countdown { display: flex; gap: 15px; margin: 30px 0; opacity: 1 !important; }
+        .countdown-item { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 12px; padding: 20px 15px; min-width: 80px; border: 1px solid rgba(255, 215, 0, 0.3); }
+        .countdown-number { font-size: 4vw; font-weight: 900; color: #ffd700; text-shadow: 0 0 15px #ffd700; }
+        .countdown-text { font-size: 1.2vw; color: #ffffff; opacity: 0.8; }
+        
+        .blessing { font-size: 2.5vw; color: #ffffff; margin-bottom: 30px; opacity: 1 !important; transform: translateY(0) !important; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .year { font-size: 10vw; font-weight: 900; color: #fff; text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700, 0 0 40px #ffd700, 0 0 80px #ffd700; margin: 20px 0; opacity: 0; display: none; animation: pulse 2s ease 2s forwards; }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 30px;
+            background: linear-gradient(90deg, #ffd700, #ff9a00);
+            color: #000;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+            opacity: 1 !important;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #ffd700;
+        }
+
+        /* 弹窗飞入动画 */
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(calc(-50% + 100px), -50%) scale(0.9);
+            opacity: 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            padding: 30px;
+            color: #fff;
+            font-size: 20px;
+            text-align: center;
+            z-index: 9999;
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .popup.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes scale { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
+        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { opacity: 0; transform: scale(0.8); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div class="container">
+        <div class="title">2026跨年倒计时！！！</div>
+        <div class="countdown">
+            <div class="countdown-item"><div class="countdown-number" id="days">00</div><div class="countdown-text">天</div></div>
+            <div class="countdown-item"><div class="countdown-number" id="hours">00</div><div class="countdown-text">时</div></div>
+            <div class="countdown-item"><div class="countdown-number" id="minutes">00</div><div class="countdown-text">分</div></div>
+            <div class="countdown-item"><div class="countdown-number" id="seconds">00</div><div class="countdown-text">秒</div></div>
+        </div>
+        <div class="blessing">To 孔雨轩 愿新年 胜旧年<br>平安喜乐 · 万事顺意 · 岁岁年年</div>
+        <div class="year">2026</div>
+        <button class="btn" id="blessingBtn">傻鸟点击领取好运</button>
+    </div>
+    <div class="popup" id="popup"></div>
+
+    <!-- 1. 先加载粒子JS（保留效果），2. 再执行核心逻辑 -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ========== 第一步：初始化粒子效果（完整保留） ==========
+            try {
+                particlesJS('particles-js', {
+                    "particles": { 
+                        "number": { "value": 100, "density": { "enable": true, "value_area": 800 } }, 
+                        "color": { "value": ["#ffd700", "#ff6b6b", "#4ecdc4", "#ffffff"] }, 
+                        "shape": { "type": "circle" }, 
+                        "opacity": { "value": 0.7, "random": true }, 
+                        "size": { "value": 3, "random": true }, 
+                        "line_linked": { "enable": true, "distance": 150, "color": "#ffd700", "opacity": 0.2, "width": 1 }, 
+                        "move": { "enable": true, "speed": 1, "direction": "none", "random": true, "straight": false, "out_mode": "out", "bounce": false } 
+                    },
+                    "interactivity": { 
+                        "detect_on": "canvas", 
+                        "events": { 
+                            "onhover": { "enable": true, "mode": "grab" }, 
+                            "onclick": { "enable": true, "mode": "push" }, 
+                            "resize": true 
+                        }, 
+                        "modes": { 
+                            "grab": { "distance": 140, "line_linked": { "opacity": 0.5 } }, 
+                            "push": { "particles_nb": 4 } 
+                        } 
+                    },
+                    "retina_detect": true
+                });
+                console.log('粒子效果加载成功 ✅');
+            } catch (e) {
+                // 粒子加载失败时仅提示，不影响其他功能
+                console.log('粒子效果加载失败（网络问题），倒计时仍可用 ❗', e);
+            }
+
+            // ========== 第二步：倒计时核心逻辑（优先执行） ==========
+            // 正式用：2026年1月1日（取消注释即可）
+            const targetTime = new Date(2026, 0, 1, 0, 0, 0).getTime();
+            // 测试用：当前时间+5分钟（本地验证用，注释上面一行即可）
+            // const targetTime = Date.now() + 5 * 60 * 1000;
+
+            const daysEl = document.getElementById('days');
+            const hoursEl = document.getElementById('hours');
+            const minutesEl = document.getElementById('minutes');
+            const secondsEl = document.getElementById('seconds');
+            const yearEl = document.querySelector('.year');
+            const countdownEl = document.querySelector('.countdown');
+            const titleEl = document.querySelector('.title');
+
+            function padZero(num) { return num < 10 ? '0' + num : num; }
+
+            function updateCountdown() {
+                const now = Date.now();
+                const distance = targetTime - now;
+
+                if (distance <= 0) {
+                    countdownEl.style.display = 'none';
+                    yearEl.style.display = 'block';
+                    titleEl.textContent = '新年快乐！';
+                    fullScreenFireworks();
+                    if (window.countdownTimer) clearInterval(window.countdownTimer);
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                daysEl.innerText = padZero(days);
+                hoursEl.innerText = padZero(hours);
+                minutesEl.innerText = padZero(minutes);
+                secondsEl.innerText = padZero(seconds);
+            }
+
+            // 立即执行+每秒更新（确保本地显示）
+            updateCountdown();
+            window.countdownTimer = setInterval(updateCountdown, 1000);
+
+            // ========== 烟花功能（保留） ==========
+            function fullScreenFireworks() {
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.random() * window.innerWidth;
+                    const y = Math.random() * window.innerHeight;
+                    setTimeout(() => createFirework(x, y), i * 300);
+                }
+            }
+
+            document.addEventListener('click', function(e) { createFirework(e.clientX, e.clientY); });
+
+            function createFirework(x, y) {
+                const colors = ['#ffd700', '#ff6b6b', '#4ecdc4', '#ff9a9e', '#fad0c4'];
+                const particleCount = 50;
+                const fireworkContainer = document.createElement('div');
+                fireworkContainer.style.position = 'absolute';
+                fireworkContainer.style.left = `${x}px`;
+                fireworkContainer.style.top = `${y}px`;
+                fireworkContainer.style.pointerEvents = 'none';
+                document.body.appendChild(fireworkContainer);
+
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    const angle = (i / particleCount) * Math.PI * 2;
+                    const speed = 2 + Math.random() * 5;
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+
+                    particle.style.position = 'absolute';
+                    particle.style.width = `${2 + Math.random() * 4}px`;
+                    particle.style.height = `${2 + Math.random() * 4}px`;
+                    particle.style.borderRadius = '50%';
+                    particle.style.backgroundColor = color;
+                    particle.style.left = '0px';
+                    particle.style.top = '0px';
+                    particle.style.opacity = '1';
+                    particle.style.transition = `all 0.8s ease-out`;
+
+                    fireworkContainer.appendChild(particle);
+
+                    setTimeout(() => {
+                        particle.style.transform = `translate(${Math.cos(angle) * speed * 10}px, ${Math.sin(angle) * speed * 10}px)`;
+                        particle.style.opacity = '0';
+                    }, 10);
+                }
+
+                setTimeout(() => { document.body.removeChild(fireworkContainer); }, 1000);
+            }
+
+            // ========== 祝福按钮+弹窗（保留） ==========
+            const btn = document.getElementById('blessingBtn');
+            const popup = document.getElementById('popup');
+            const blessings = [
+                "愿kyx2026心想事成，万事顺遂！",
+                "新的一年，平安喜乐常伴kyx左右。",
+                "愿kyx所盼皆如愿，所望皆成真。",
+                "2026，kyx好运加倍，快乐满格！",
+                "愿kyx前途光明，笑容常在。",
+                "愿kyx被世界温柔以待。",
+                "kyx新年新气象，万事皆可期。",
+                "愿kyx岁岁常欢愉，年年皆胜意。",
+                "愿kyx眼中有光，心中有爱。",
+                "2026，愿kyx好运连连，惊喜不断！"
+            ];
+
+            btn.onclick = function() {
+                const text = blessings[Math.floor(Math.random() * blessings.length)];
+                popup.innerText = text;
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                }, 2000);
+            };
+        });
+    </script>
+</body>
+</html>
